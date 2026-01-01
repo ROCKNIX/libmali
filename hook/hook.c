@@ -307,9 +307,29 @@ gbm_bo_create_with_modifiers2(struct gbm_device *gbm,
                               uint32_t flags)
 {
 #ifdef HAS_gbm_bo_create_with_modifiers
-   /* flags ignored */
-   return _gbm_bo_create_with_modifiers(gbm, width, height, format,
-                                        modifiers, count);
+    struct gbm_bo *gbm_bo;
+	gbm_bo = _gbm_bo_create_with_modifiers (gbm,
+                                              width, height, format,
+                                              modifiers, count);
+	if (!gbm_bo)
+	{
+		bool has_mod_invalid = false, has_mod_linear = false;
+		int i;
+
+		for (i = 0; i < count; i++) {
+			if (modifiers[i] == DRM_FORMAT_MOD_INVALID)
+				has_mod_invalid = true;
+			else if (modifiers[i] == DRM_FORMAT_MOD_LINEAR)
+				has_mod_linear = true;
+		}
+
+		if (!has_mod_invalid && has_mod_linear)
+			flags |= GBM_BO_USE_LINEAR;
+
+		gbm_bo = gbm_bo_create(gbm, width, height, format, flags);
+	}
+
+	return gbm_bo;
 #else
    if (!can_ignore_modifiers(modifiers, count))
       return NULL;
